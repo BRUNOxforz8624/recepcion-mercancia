@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1a6b3c">
+    <meta name="description" content="Aplicacion de recepcion de mercancia con escaneo de codigos de barras">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <title>Recepcion de Mercancia</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#1a6b3c;--primary-dark:#14542e;--primary-light:#e8f5ec;--accent:#e8a830;--danger:#d63031;--danger-light:#ffeaea;--bg:#f0f2f5;--card:#fff;--text:#2d3436;--text-light:#636e72;--border:#dfe6e9;--shadow:0 2px 12px rgba(0,0,0,.08);--radius:12px}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:80px}
+        header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:16px 20px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+        header h1{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+        header h1 i{font-size:22px}
+        .header-sub{font-size:12px;opacity:.85;margin-top:2px}
+        .header-right{position:absolute;right:16px;top:50%;transform:translateY(-50%);display:flex;gap:10px}
+        .header-btn{background:rgba(255,255,255,.2);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.2s}
+        .header-btn:hover{background:rgba(255,255,255,.35)}
+        .container{max-width:600px;margin:0 auto;padding:16px}
+        .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
+        .card-title{font-size:14px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+        .card-title i{color:var(--primary)}
+        .scanner-container{width:100%;border-radius:8px;overflow:hidden;background:#000;min-height:250px;position:relative}
+        #reader{width:100%}
+        #reader video{width:100%!important;border-radius:8px}
+        .scanner-overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80%;height:40%;border:2px solid var(--accent);border-radius:8px;pointer-events:none;z-index:10}
+        .scanner-overlay::before{content:'';position:absolute;top:-1px;left:0;right:0;height:3px;background:var(--accent);animation:scanLine 2s ease-in-out infinite}
+        @keyframes scanLine{0%,100%{top:-1px}50%{top:calc(100% - 2px)}}
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:.2s;width:100%}
+        .btn:active{transform:scale(.97)}
+        .btn-primary{background:var(--primary);color:#fff}
+        .btn-primary:hover{background:var(--primary-dark)}
+        .btn-accent{background:var(--accent);color:#fff}
+        .btn-danger{background:var(--danger);color:#fff}
+        .btn-outline{background:transparent;color:var(--primary);border:2px solid var(--primary)}
+        .btn-sm{padding:8px 14px;font-size:13px;width:auto}
+        .btn-group{display:flex;gap:8px}
+        .btn-group .btn{flex:1}
+        .search-box{position:relative}
+        .search-box input{width:100%;padding:12px 16px 12px 42px;border:2px solid var(--border);border-radius:8px;font-size:15px;transition:.2s;outline:none}
+        .search-box input:focus{border-color:var(--primary)}
+        .search-box i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-light)}
+        .search-results{max-height:300px;overflow-y:auto;margin-top:8px}
+        .search-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;transition:.15s}
+        .search-item:hover{background:var(--primary-light)}
+        .search-item:last-child{border-bottom:none}
+        .search-item-name{font-weight:600;font-size:14px}
+        .search-item-add{color:var(--primary);font-size:18px}
+        .product-found{background:var(--primary-light);border:2px solid var(--primary);border-radius:8px;padding:16px;margin-bottom:16px;animation:slideDown .3s ease}
+        @keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+        .product-found-name{font-size:16px;font-weight:700;color:var(--primary-dark);margin-bottom:10px}
+        .qty-controls{display:flex;align-items:center;gap:12px}
+        .qty-btn{width:40px;height:40px;border-radius:50%;border:2px solid var(--primary);background:#fff;color:var(--primary);font-size:20px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+        .qty-btn:hover{background:var(--primary);color:#fff}
+        .qty-btn:active{transform:scale(.9)}
+        .qty-input{width:60px;text-align:center;font-size:20px;font-weight:700;border:2px solid var(--border);border-radius:8px;padding:6px;outline:none}
+        .qty-input:focus{border-color:var(--primary)}
+        .received-list{list-style:none}
+        .received-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);animation:slideDown .3s ease}
+        .received-item:last-child{border-bottom:none}
+        .received-item-info{flex:1}
+        .received-item-name{font-weight:600;font-size:14px}
+        .received-item-qty{font-size:12px;color:var(--text-light);margin-top:2px}
+        .received-item-actions{display:flex;align-items:center;gap:8px}
+        .icon-btn{width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:.15s}
+        .icon-btn:active{transform:scale(.9)}
+        .icon-btn-edit{background:var(--primary-light);color:var(--primary)}
+        .icon-btn-delete{background:var(--danger-light);color:var(--danger)}
+        .empty-state{text-align:center;padding:30px;color:var(--text-light)}
+        .empty-state i{font-size:40px;margin-bottom:10px;opacity:.4}
+        .empty-state p{font-size:14px}
+        .stats{display:flex;gap:12px;margin-bottom:16px}
+        .stat-card{flex:1;background:var(--card);border-radius:var(--radius);padding:14px;text-align:center;box-shadow:var(--shadow)}
+        .stat-number{font-size:24px;font-weight:800;color:var(--primary)}
+        .stat-label{font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+        .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:.2s}
+        .modal-overlay.active{opacity:1;pointer-events:all}
+        .modal{background:var(--card);border-radius:var(--radius);padding:24px;width:100%;max-width:400px;transform:scale(.9);transition:.2s;max-height:80vh;overflow-y:auto}
+        .modal-overlay.active .modal{transform:scale(1)}
+        .modal h3{margin-bottom:16px;font-size:18px}
+        .modal-actions{display:flex;gap:8px;margin-top:16px}
+        .modal-actions .btn{flex:1}
+        .tab-bar{display:flex;background:var(--card);border-radius:var(--radius);padding:4px;margin-bottom:16px;box-shadow:var(--shadow);flex-wrap:wrap;gap:2px}
+        .tab{flex:1;min-width:0;padding:10px 6px;text-align:center;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;color:var(--text-light)}
+        .tab.active{background:var(--primary);color:#fff}
+        .tab-content{display:none}.tab-content.active{display:block}
+        .date-display{text-align:center;font-size:13px;color:var(--text-light);margin-bottom:12px}
+        .barcode-manual{display:flex;gap:8px;margin-top:8px}
+        .barcode-manual input{flex:1;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:15px;outline:none}
+        .barcode-manual input:focus{border-color:var(--primary)}
+        .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;z-index:300;opacity:0;transition:.3s;pointer-events:none}
+        .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+        .badge{display:inline-flex;align-items:center;justify-content:center;background:var(--danger);color:#fff;font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:10px;padding:0 6px}
+        .hidden{display:none!important}
+        .flash{animation:flash .5s}
+        @keyframes flash{0%,100%{background:var(--card)}50%{background:var(--primary-light)}}
+        .product-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border);gap:8px}
+        .product-row:last-child{border-bottom:none}
+        .product-row-info{flex:1;min-width:0}
+        .product-row-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .product-row-detail{font-size:11px;color:var(--text-light)}
+        .product-row-actions{display:flex;gap:6px;flex-shrink:0}
+        .file-drop{border:2px dashed var(--border);border-radius:8px;padding:30px 20px;text-align:center;cursor:pointer;transition:.2s}
+        .file-drop:hover,.file-drop.dragover{border-color:var(--primary);background:var(--primary-light)}
+        .file-drop i{font-size:36px;color:var(--text-light);margin-bottom:8px;display:block}
+        .file-drop p{font-size:13px;color:var(--text-light)}
+        .file-drop input{display:none}
+        .import-preview{max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-top:12px}
+        .preview-row{display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px}
+        .preview-row:last-child{border-bottom:none}
+        .preview-row:nth-child(even){background:#fafafa}
+        .report-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+        .report-summary-item{background:var(--card);border-radius:8px;padding:12px;text-align:center;box-shadow:var(--shadow)}
+        .report-summary-item.full{grid-column:1/-1}
+        .report-summary-number{font-size:28px;font-weight:800}
+        .report-summary-label{font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px}
+        .report-row{display:flex;align-items:stretch;border-bottom:1px solid var(--border);min-height:56px}
+        .report-row:last-child{border-bottom:none}
+        .report-row-info{flex:1;padding:10px 0}
+        .report-row-name{font-weight:600;font-size:13px}
+        .report-row-detail{font-size:11px;color:var(--text-light);margin-top:2px}
+        .report-row-nums{display:flex;align-items:center;gap:6px;padding:6px 0}
+        .report-expected{font-size:12px;color:var(--text-light);text-align:center;min-width:38px}
+        .report-expected span{display:block;font-size:18px;font-weight:700;color:var(--text)}
+        .report-received{font-size:12px;text-align:center;min-width:38px}
+        .report-received span{display:block;font-size:18px;font-weight:700;color:var(--text)}
+        .report-arrow{color:var(--border);font-size:16px}
+        .report-diff{display:flex;align-items:center;justify-content:center;min-width:70px;border-radius:8px;font-weight:800;font-size:15px;padding:6px 10px;margin:6px 0}
+        .report-diff.ok{background:var(--primary-light);color:var(--primary)}
+        .report-diff.missing{background:var(--danger-light);color:var(--danger);animation:pulseDiff 1.5s ease-in-out infinite}
+        .report-diff.excess{background:#fff3e0;color:#e67e22}
+        @keyframes pulseDiff{0%,100%{opacity:1}50%{opacity:.7}}
+        .report-section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:10px 0 6px;display:flex;align-items:center;gap:8px}
+        .report-section-title.missing-title{color:var(--danger)}
+        .report-section-title.ok-title{color:var(--primary)}
+        .report-section-title.excess-title{color:#e67e22}
+        .report-section-title.notscanned-title{color:var(--text-light)}
+        .report-progress-bar{width:100%;height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:6px}
+        .report-progress-fill{height:100%;border-radius:4px;transition:width .5s ease}
+        .report-progress-fill.green{background:var(--primary)}
+        .report-progress-fill.red{background:var(--danger)}
+        .report-progress-fill.orange{background:var(--accent)}
+        .filter-bar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+        .filter-chip{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:2px solid var(--border);background:var(--card);color:var(--text-light);transition:.2s}
+        .filter-chip.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary)}
+        .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+        .cal-header h3{font-size:18px;font-weight:700}
+        .cal-nav{display:flex;gap:8px}
+        .cal-nav button{width:36px;height:36px;border-radius:50%;border:2px solid var(--border);background:var(--card);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.2s}
+        .cal-nav button:hover{background:var(--primary-light);border-color:var(--primary);color:var(--primary)}
+        .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+        .cal-day-name{font-size:11px;font-weight:700;color:var(--text-light);padding:6px 0;text-transform:uppercase}
+        .cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:.2s;position:relative;border:2px solid transparent}
+        .cal-day:hover{background:var(--primary-light)}
+        .cal-day.today{border-color:var(--primary);color:var(--primary)}
+        .cal-day.has-data{background:var(--primary-light)}
+        .cal-day.selected{background:var(--primary);color:#fff}
+        .cal-day.selected .cal-dot{background:#fff}
+        .cal-day.other-month{opacity:.3}
+        .cal-dot{width:6px;height:6px;border-radius:50%;background:var(--primary);margin-top:2px}
+        .cal-dot.red{background:var(--danger)}
+        .cal-legend{display:flex;gap:12px;justify-content:center;margin-top:12px;font-size:12px;color:var(--text-light);flex-wrap:wrap}
+        .cal-legend-item{display:flex;align-items:center;gap:4px}
+        .cal-legend-dot{width:8px;height:8px;border-radius:50%}
+        .day-detail{margin-top:16px}
+        .day-detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+        .day-detail-header h3{font-size:16px;font-weight:700}
+        .day-detail-item{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:10px}
+        .day-detail-item:last-child{border-bottom:none}
+        .day-detail-qty{font-size:20px;font-weight:800;color:var(--primary);min-width:40px;text-align:center}
+        .day-detail-qty.negative{color:var(--danger)}
+        .day-detail-name{flex:1;font-weight:600;font-size:13px}
+        .day-detail-sub{font-size:11px;color:var(--text-light)}
+        .day-summary{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+        .day-summary-chip{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;background:var(--card);box-shadow:var(--shadow)}
+    </style>
+</head>
+<body>
+
+<header>
+    <h1><i class="fas fa-truck-loading"></i> Recepcion de Mercancia</h1>
+    <div class="header-sub">Control de Inventario</div>
+    <div class="header-right">
+        <button class="header-btn" onclick="switchTab('productos')" title="Gestionar Productos"><i class="fas fa-boxes"></i></button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="date-display" id="currentDate"></div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number" id="totalItems">0</div>
+            <div class="stat-label">Productos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalQty">0</div>
+            <div class="stat-label">Unidades</div>
+        </div>
+    </div>
+
+    <div class="tab-bar" id="mainTabBar">
+        <div class="tab active" onclick="switchTab('scan')"><i class="fas fa-barcode"></i> Escanear</div>
+        <div class="tab" onclick="switchTab('search')"><i class="fas fa-search"></i> Buscar</div>
+        <div class="tab" onclick="switchTab('list')"><i class="fas fa-list"></i> Lista <span class="badge hidden" id="listBadge">0</span></div>
+        <div class="tab" onclick="switchTab('report')"><i class="fas fa-chart-bar"></i> Reporte</div>
+        <div class="tab" onclick="switchTab('calendar')"><i class="fas fa-calendar-alt"></i> Cal.</div>
+        <div class="tab" onclick="switchTab('productos')"><i class="fas fa-boxes"></i> Prod.</div>
+    </div>
+
+    <!-- SCAN -->
+    <div class="tab-content active" id="tab-scan">
+        <div class="card" id="scanner-section">
+            <div class="card-title"><i class="fas fa-camera"></i> Escanear Codigo de Barras</div>
+            <div class="scanner-container" id="scannerContainer">
+                <div id="reader"></div>
+                <div class="scanner-overlay" id="scannerOverlay" style="display:none;"></div>
+            </div>
+            <div style="margin-top:12px;">
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="btnStartScan" onclick="startScanner()"><i class="fas fa-camera"></i> Iniciar Camara</button>
+                    <button class="btn btn-danger hidden" id="btnStopScan" onclick="stopScanner()"><i class="fas fa-stop"></i> Detener</button>
+                </div>
+                <div class="barcode-manual">
+                    <input type="text" id="manualBarcode" placeholder="O ingresa el codigo manualmente..." onkeypress="if(event.key==='Enter')lookupBarcode(this.value)">
+                    <button class="btn btn-accent btn-sm" onclick="lookupBarcode(document.getElementById('manualBarcode').value)"><i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+        </div>
+        <div id="productFound"></div>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="tab-content" id="tab-search">
+        <div class="card">
+            <div class="card-title"><i class="fas fa-search"></i> Buscar Producto</div>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Escribe el nombre del producto..." oninput="filterProducts(this.value)">
+            </div>
+            <div class="search-results" id="searchResults"></div>
+        </div>
+        <div id="searchProductFound"></div>
+    </div>
+
+    <!-- LIST -->
+    <div class="tab-content" id="tab-list">
+        <div class="card">
+            <div class="card-title"><i class="fas fa-clipboard-list"></i> Lista de Recepcion</div>
+            <ul class="received-list" id="receivedList">
+                <li class="empty-state"><i class="fas fa-inbox"></i><p>No hay productos registrados aun.</p></li>
+            </ul>
+        </div>
+        <div class="btn-group" id="exportSection" style="display:none;">
+            <button class="btn btn-primary" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+            <button class="btn btn-outline" onclick="clearAll()"><i class="fas fa-trash"></i> Limpiar</button>
+        </div>
+    </div>
+
+    <!-- REPORT -->
+    <div class="tab-content" id="tab-report">
+        <div id="reportContent"></div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="tab-content" id="tab-calendar">
+        <div id="calendarContent"></div>
+    </div>
+
+    <!-- PRODUCTOS -->
+    <div class="tab-content" id="tab-productos">
+        <div class="card">
+            <div class="card-title"><i class="fas fa-file-excel"></i> Importar desde Excel</div>
+            <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Haz clic aqui o arrastra un archivo .xlsx/.xls</p>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFileImport(event)">
+            </div>
+            <div id="importPreview" class="hidden">
+                <div style="margin-top:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <strong style="font-size:13px;" id="importCount"></strong>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-primary btn-sm" onclick="confirmImport()"><i class="fas fa-check"></i> Aplicar</button>
+                            <button class="btn btn-outline btn-sm" onclick="cancelImport()"><i class="fas fa-times"></i> Cancelar</button>
+                        </div>
+                    </div>
+                    <div class="import-preview" id="importPreviewList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="fas fa-boxes"></i> Productos (<span id="productCount">0</span>)</div>
+            <div class="search-box" style="margin-bottom:8px;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="productSearchInput" placeholder="Buscar producto..." oninput="renderProductList()">
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;">
+                <button class="btn btn-outline btn-sm" style="flex:1;" onclick="exportProducts()"><i class="fas fa-download"></i> Exportar Excel</button>
+                <button class="btn btn-danger btn-sm" style="flex:1;" onclick="resetToDefault()"><i class="fas fa-undo"></i> Restaurar Default</button>
+            </div>
+            <div id="productList" style="max-height:400px;overflow-y:auto;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Qty Modal -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <h3><i class="fas fa-edit" style="color:var(--primary)"></i> Editar Cantidad</h3>
+        <p id="editProductName" style="color:var(--text-light);margin-bottom:12px;"></p>
+        <div class="qty-controls" style="justify-content:center;">
+            <button class="qty-btn" onclick="editQty(-1)">-</button>
+            <input type="number" class="qty-input" id="editQtyInput" min="0" value="1">
+            <button class="qty-btn" onclick="editQty(1)">+</button>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeEditModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="saveEdit()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Unknown Barcode Modal -->
+<div class="modal-overlay" id="unknownModal">
+    <div class="modal">
+        <h3><i class="fas fa-exclamation-triangle" style="color:var(--accent)"></i> Codigo No Reconocido</h3>
+        <p id="unknownBarcode" style="color:var(--text-light);margin-bottom:12px;word-break:break-all;"></p>
+        <p style="font-size:13px;margin-bottom:12px;">Selecciona un producto para asociar:</p>
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="unknownSearchInput" placeholder="Buscar producto..." oninput="filterUnknownProducts(this.value)">
+        </div>
+        <div class="search-results" id="unknownResults" style="max-height:200px;"></div>
+        <div class="modal-actions"><button class="btn btn-outline" onclick="closeUnknownModal()">Cancelar</button></div>
+    </div>
+</div>
+
+<!-- Edit Product Modal -->
+<div class="modal-overlay" id="productEditModal">
+    <div class="modal">
+        <h3><i class="fas fa-edit" style="color:var(--primary)"></i> <span id="productEditTitle">Editar Producto</span></h3>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <input type="text" id="peName" placeholder="Nombre del producto" style="padding:10px;border:2px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+            <input type="text" id="peBarcode" placeholder="Codigo de barras" style="padding:10px;border:2px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+            <div style="display:flex;gap:8px;">
+                <input type="number" id="peCost" placeholder="Costo" step="0.01" style="flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+                <input type="number" id="pePvp" placeholder="PVP" step="0.01" style="flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+            </div>
+            <input type="number" id="peExpected" placeholder="Cantidad esperada" style="padding:10px;border:2px solid var(--border);border-radius:8px;font-size:14px;outline:none;">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeProductEditModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="saveProductEdit()"><i class="fas fa-save"></i> Guardar</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== DEFAULT PRODUCTS =====================
+const DEFAULT_PRODUCTS = [
+    {barcode:"8003012010108",name:"CAFE LAVAZZA ROSSO",cost:5.30,pvp:9.01,expected:18},
+    {barcode:"070742246495",name:"HARINA ALMENDRA 16 OZ",cost:10.07,pvp:17.12,expected:5},
+    {barcode:"016000307522",name:"BETTY CROCKER BROWNIE",cost:3.50,pvp:5.95,expected:4},
+    {barcode:"016000307523",name:"BETTY CROCKER AMARILLO 15.25 OZ VAINILLA",cost:3.50,pvp:5.95,expected:4},
+    {barcode:"016000307110",name:"BETTY CROCKER SUPER MOIST 375G",cost:3.50,pvp:5.95,expected:4},
+    {barcode:"033148100099",name:"TAJIN CHILE LIMON 1.6OZ",cost:2.47,pvp:4.20,expected:6},
+    {barcode:"033148100013",name:"TAJIN CHILE LIMON 5 OZ 142G",cost:3.41,pvp:5.80,expected:4},
+    {barcode:"078422151621",name:"COCONUT OIL 14 OZ 414 ML",cost:8.00,pvp:13.60,expected:3},
+    {barcode:"023400515637",name:"COMBAT MAX GEL CUCARACHAS 30 G",cost:7.47,pvp:12.70,expected:5},
+    {barcode:"827854003504",name:"AJAX 21 OZ/589 GR",cost:2.65,pvp:4.50,expected:18},
+    {barcode:"071072021804",name:"ALESSIS RED BALSAMIC 8.5 OZ",cost:5.56,pvp:9.45,expected:6},
+    {barcode:"078742232218",name:"MUSTARD DIJON ORGANIC",cost:2.57,pvp:4.37,expected:1},
+    {barcode:"078742232195",name:"MUSTARD HONEY DIJON",cost:2.57,pvp:4.37,expected:3},
+    {barcode:"078742232201",name:"MUSTARD MOLDED GROUND 340G",cost:2.57,pvp:4.37,expected:4},
+    {barcode:"078742103661",name:"MUSTARD DIJON 340G",cost:2.57,pvp:4.37,expected:4},
+    {barcode:"078742062266",name:"MUSTARD YELLOW MOSTAZA 557G GV",cost:2.70,pvp:4.59,expected:8},
+    {barcode:"070742082155",name:"APPLE JUICE 64 OZ",cost:5.38,pvp:9.15,expected:6},
+    {barcode:"078742370811",name:"PANCAKE & WAFFLE MIX ORIGINAL 454G",cost:4.88,pvp:8.30,expected:5},
+    {barcode:"078742372411",name:"PANCAKE & WAFFLE MIX MANTEQUILLA 454G",cost:4.48,pvp:7.62,expected:8},
+    {barcode:"194349002022",name:"MASHED POTATO PURE DE PAPA INST 13.75 OZ",cost:4.40,pvp:7.48,expected:5},
+    {barcode:"071012075034",name:"HARINA GLUTEN FREE 625G",cost:6.56,pvp:11.15,expected:4},
+    {barcode:"039600895607",name:"NUTELLA 371gr",cost:5.84,pvp:9.93,expected:8},
+    {barcode:"FERRERO3",name:"CHOCOLATE FERRERO 3 CHOCOLATE",cost:2.69,pvp:4.58,expected:8},
+    {barcode:"FERRERO8",name:"CHOCOLATE FERRERO 8 CHOCOLATES",cost:5.85,pvp:9.95,expected:5},
+    {barcode:"078421583167",name:"FILTRO DE CAFE COL. N 4-1 200 UN",cost:4.99,pvp:8.48,expected:38},
+    {barcode:"041529000980",name:"COOK TOP KIT LIMPIEZA",cost:9.90,pvp:16.83,expected:2},
+    {barcode:"041529000027",name:"WEIMAN SPRAY PULIDOR 340 G",cost:6.50,pvp:11.05,expected:3},
+    {barcode:"01529000705",name:"COOK TOP WEIMAN SPRAY PARA COCINA",cost:6.62,pvp:11.25,expected:4},
+    {barcode:"041529000720",name:"WEIMAN CREMA LIMPIADORA VIDRIO 425G",cost:6.63,pvp:11.27,expected:4},
+    {barcode:"017503204115",name:"FAULTLESS LUXE FINISH 535G",cost:4.80,pvp:8.16,expected:4},
+    {barcode:"017500207228",name:"ALMIDON FAULTLESS HEAVY FINISH 5870",cost:3.92,pvp:6.66,expected:4},
+    {barcode:"041220007225",name:"ADEREZO MIL ISLAND KRAFT 444ML",cost:4.01,pvp:6.82,expected:3},
+    {barcode:"021000304674",name:"ADEREZO CESAR KRAFT 16 OZ",cost:4.72,pvp:8.03,expected:5},
+    {barcode:"048001007686",name:"MAYONESA AGUACATE HELLMANS 340 ML",cost:5.10,pvp:8.67,expected:8},
+    {barcode:"021000015071",name:"ADEREZO CESAR KRAFT 8 OZ 237ML",cost:1.86,pvp:3.16,expected:8},
+    {barcode:"046000180613",name:"TACO 10 SHELL OLD EL PASO 127G",cost:6.84,pvp:11.63,expected:8},
+    {barcode:"046000370103",name:"TACO 10 SHELL OLD EL PASO 127G (0103)",cost:3.70,pvp:6.29,expected:5},
+    {barcode:"046000370117",name:"TACO 10 SHELL OLD EL PASO 127G (0117)",cost:3.70,pvp:6.29,expected:8},
+    {barcode:"80176803",name:"NUTELLA 26.5 OZ 750GR",cost:8.28,pvp:14.08,expected:8},
+    {barcode:"051500240840",name:"JIF SQUEEZE ROJA",cost:7.79,pvp:13.24,expected:8},
+    {barcode:"051500240857",name:"JIF SQUEEZE CRUNCHY AZUL",cost:7.79,pvp:13.24,expected:4},
+    {barcode:"078742185797",name:"MV CREMA PEANUT BUTTER 40 OZ 1.13KG",cost:5.89,pvp:10.01,expected:6},
+    {barcode:"7390232232",name:"JIF TO GO BUTTER PEANUT 8UN",cost:0.50,pvp:0.85,expected:108},
+    {barcode:"074471017201",name:"CAFFE BUSTELO 283G",cost:6.26,pvp:10.63,expected:24},
+    {barcode:"ARROZB1",name:"ARROZ BASMATI 1KG",cost:4.55,pvp:7.74,expected:27},
+    {barcode:"009800802056",name:"NUTELLA & GO 16 PACK",cost:1.35,pvp:2.30,expected:32},
+    {barcode:"009800820015",name:"NUTELLA B READY 22G",cost:0.54,pvp:0.92,expected:108},
+    {barcode:"046000280937",name:"TACO SEASONING 28G",cost:0.90,pvp:1.53,expected:20},
+    {barcode:"076150232486",name:"ACT II 32 COTUFAS MANTEQUILLA 78G",cost:0.66,pvp:1.13,expected:160},
+    {barcode:"4583751662",name:"JABON IRISH SPRING 113G",cost:0.89,pvp:1.51,expected:110},
+    {barcode:"75900056015",name:"TIDE PODS POWER 18 CAPSULAS",cost:10.88,pvp:18.50,expected:15},
+    {barcode:"078735746880",name:"CRANBERRY Y PECANS TOPPING SALAD 20 OZ",cost:11.88,pvp:20.20,expected:4},
+    {barcode:"023112000702",name:"PECANS HALVES 24 OZ 680 G",cost:11.88,pvp:20.20,expected:4}
+];
+
+// ===================== IndexedDB =====================
+const DB_NAME = 'RecepcionDB';
+const DB_VERSION = 3;
+let db = null;
+let PRODUCTS = [];
+let barcodeMap = {};
+
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = e => {
+            const d = e.target.result;
+            if (!d.objectStoreNames.contains('products')) {
+                const store = d.createObjectStore('products', { keyPath: 'id', autoIncrement: true });
+                store.createIndex('barcode', 'barcode', { unique: false });
+                store.createIndex('name', 'name', { unique: false });
+            }
+            if (!d.objectStoreNames.contains('received')) {
+                d.createObjectStore('received', { keyPath: 'productId' });
+            }
+            if (!d.objectStoreNames.contains('barcodeMap')) {
+                d.createObjectStore('barcodeMap', { keyPath: 'barcode' });
+            }
+            if (!d.objectStoreNames.contains('history')) {
+                const hs = d.createObjectStore('history', { keyPath: 'id', autoIncrement: true });
+                hs.createIndex('date', 'date', { unique: false });
+                hs.createIndex('productId', 'productId', { unique: false });
+            }
+        };
+        req.onsuccess = e => { db = e.target.result; resolve(db); };
+        req.onerror = e => reject(e);
+    });
+}
+
+function dbGetAll(storeName) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readonly');
+        const req = tx.objectStore(storeName).getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req);
+    });
+}
+
+function dbPut(storeName, data) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const req = tx.objectStore(storeName).put(data);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req);
+    });
+}
+
+function dbDelete(storeName, key) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const req = tx.objectStore(storeName).delete(key);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req);
+    });
+}
+
+function dbClear(storeName) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const req = tx.objectStore(storeName).clear();
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req);
+    });
+}
+
+function dbPutAll(storeName, items) {
+    return new Promise(async (resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        items.forEach(item => store.put(item));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx);
+    });
+}
+
+function dbGetByIndex(storeName, indexName, value) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readonly');
+        const idx = tx.objectStore(storeName).index(indexName);
+        const req = idx.getAll(value);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req);
+    });
+}
+
+// ===================== LOAD DATA =====================
+async function loadAllData() {
+    // Products
+    const storedProducts = await dbGetAll('products');
+    if (storedProducts.length === 0) {
+        await seedDefaultProducts();
+        PRODUCTS = await dbGetAll('products');
+    } else {
+        PRODUCTS = storedProducts;
+    }
+
+    // Barcode map
+    const storedMap = await dbGetAll('barcodeMap');
+    barcodeMap = {};
+    if (storedMap.length === 0) {
+        const defaultMapItems = [];
+        PRODUCTS.forEach(p => {
+            if (p.barcode) {
+                barcodeMap[p.barcode] = p.id;
+                defaultMapItems.push({ barcode: p.barcode, productId: p.id });
+            }
+        });
+        await dbPutAll('barcodeMap', defaultMapItems);
+    } else {
+        storedMap.forEach(m => { barcodeMap[m.barcode] = m.productId; });
+    }
+}
+
+async function seedDefaultProducts() {
+    const items = DEFAULT_PRODUCTS.map(p => ({
+        barcode: p.barcode,
+        name: p.name,
+        cost: p.cost,
+        pvp: p.pvp,
+        expected: p.expected
+    }));
+    await dbPutAll('products', items);
+}
+
+// ===================== STATE =====================
+let receivedItems = {};
+let scannerActive = false;
+let html5QrCode = null;
+let editIndex = null;
+let lastUnknownBarcode = '';
+let pendingImport = null;
+let editingProductId = null;
+let calMonth = new Date().getMonth();
+let calYear = new Date().getFullYear();
+let calSelectedDate = null;
+let calHistoryDates = {};
+
+// ===================== INIT =====================
+async function init() {
+    await openDB();
+    await loadAllData();
+
+    const storedReceived = await dbGetAll('received');
+    receivedItems = {};
+    storedReceived.forEach(r => { receivedItems[r.productId] = r.qty; });
+
+    const now = new Date();
+    document.getElementById('currentDate').textContent = now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    renderList();
+    renderSearchResults('');
+    renderProductList();
+    loadHistoryDates();
+    updateStats();
+}
+
+// ===================== TABS =====================
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    const tabs = { scan: 0, search: 1, list: 2, report: 3, calendar: 4, productos: 5 };
+    document.querySelectorAll('.tab')[tabs[tab]].classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (tab === 'list') { renderList(); document.getElementById('listBadge').classList.add('hidden'); }
+    if (tab === 'report') renderReport();
+    if (tab === 'calendar') renderCalendar();
+    if (tab === 'productos') renderProductList();
+}
+
+// ===================== SCANNER =====================
+async function startScanner() {
+    try {
+        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+        document.getElementById('btnStartScan').classList.add('hidden');
+        document.getElementById('btnStopScan').classList.remove('hidden');
+        document.getElementById('scannerOverlay').style.display = 'block';
+        await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 280, height: 100 }, aspectRatio: 1.5 }, onScanSuccess, () => {});
+        scannerActive = true;
+    } catch (err) {
+        document.getElementById('btnStartScan').classList.remove('hidden');
+        document.getElementById('btnStopScan').classList.add('hidden');
+        document.getElementById('scannerOverlay').style.display = 'none';
+        showToast("No se pudo acceder a la camara. Usa el input manual.");
+    }
+}
+
+async function stopScanner() {
+    try { if (html5QrCode && scannerActive) await html5QrCode.stop(); } catch (e) {}
+    scannerActive = false;
+    document.getElementById('btnStartScan').classList.remove('hidden');
+    document.getElementById('btnStopScan').classList.add('hidden');
+    document.getElementById('scannerOverlay').style.display = 'none';
+}
+
+let lastScanTime = 0;
+function onScanSuccess(decodedText) {
+    const now = Date.now();
+    if (now - lastScanTime < 2000) return;
+    lastScanTime = now;
+    if (navigator.vibrate) navigator.vibrate(200);
+    lookupBarcode(decodedText);
+}
+
+// ===================== BARCODE LOOKUP =====================
+function lookupBarcode(code) {
+    if (!code || !code.trim()) return;
+    code = code.trim();
+    document.getElementById('manualBarcode').value = '';
+    const productId = barcodeMap[code];
+    if (productId) {
+        const product = PRODUCTS.find(p => p.id === productId);
+        if (product) { showProductFound(product, 'productFound'); switchTab('scan'); return; }
+    }
+    lastUnknownBarcode = code;
+    document.getElementById('unknownBarcode').textContent = 'Codigo: ' + code;
+    document.getElementById('unknownSearchInput').value = '';
+    filterUnknownProducts('');
+    document.getElementById('unknownModal').classList.add('active');
+}
+
+function filterUnknownProducts(query) {
+    const results = document.getElementById('unknownResults');
+    const filtered = PRODUCTS.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
+    results.innerHTML = filtered.map(p => `<div class="search-item" onclick="associateBarcode(${p.id})"><span class="search-item-name">${p.name}</span><i class="fas fa-link search-item-add"></i></div>`).join('');
+}
+
+async function associateBarcode(productId) {
+    barcodeMap[lastUnknownBarcode] = productId;
+    await dbPut('barcodeMap', { barcode: lastUnknownBarcode, productId });
+    closeUnknownModal();
+    const product = PRODUCTS.find(p => p.id === productId);
+    showProductFound(product, 'productFound');
+    switchTab('scan');
+    showToast("Codigo asociado a: " + product.name);
+}
+
+function closeUnknownModal() { document.getElementById('unknownModal').classList.remove('active'); }
+
+// ===================== PRODUCT FOUND =====================
+function showProductFound(product, containerId) {
+    const qty = receivedItems[product.id] || 0;
+    document.getElementById(containerId).innerHTML = `
+        <div class="product-found">
+            <div class="product-found-name"><i class="fas fa-check-circle"></i> ${product.name}</div>
+            <div style="font-size:12px;color:var(--text-light);margin-bottom:10px;">
+                Esp: ${product.expected} uds | Costo: $${product.cost.toFixed(2)} | PVP: $${product.pvp.toFixed(2)}
+            </div>
+            <div class="qty-controls">
+                <button class="qty-btn" onclick="adjustFoundQty(-1, ${product.id}, '${containerId}')">-</button>
+                <input type="number" class="qty-input" id="foundQty_${containerId}" value="${qty > 0 ? qty : 1}" min="0">
+                <button class="qty-btn" onclick="adjustFoundQty(1, ${product.id}, '${containerId}')">+</button>
+                <button class="btn btn-primary btn-sm" style="flex:1;" onclick="addFoundProduct(${product.id}, '${containerId}')"><i class="fas fa-plus"></i> Agregar</button>
+            </div>
+        </div>`;
+}
+
+function adjustFoundQty(delta, productId, containerId) {
+    const input = document.getElementById('foundQty_' + containerId);
+    input.value = Math.max(0, (parseInt(input.value) || 0) + delta);
+}
+
+async function addFoundProduct(productId, containerId) {
+    const qty = parseInt(document.getElementById('foundQty_' + containerId).value) || 0;
+    if (qty <= 0) { showToast("Ingresa una cantidad mayor a 0"); return; }
+    receivedItems[productId] = qty;
+    await dbPut('received', { productId, qty });
+    const today = new Date().toISOString().split('T')[0];
+    await dbPut('history', { date: today, productId, qty, timestamp: Date.now() });
+    const product = PRODUCTS.find(p => p.id === productId);
+    showToast(`${product.name}: ${qty} unidades`);
+    document.getElementById(containerId).innerHTML = '';
+    updateStats();
+    updateBadge();
+}
+
+// ===================== SEARCH =====================
+function filterProducts(query) { renderSearchResults(query); }
+
+function renderSearchResults(query) {
+    const container = document.getElementById('searchResults');
+    const filtered = query ? PRODUCTS.filter(p => p.name.toLowerCase().includes(query.toLowerCase())) : PRODUCTS;
+    container.innerHTML = filtered.map(p => {
+        const qty = receivedItems[p.id] || 0;
+        return `<div class="search-item" onclick="showProductFound(PRODUCTS.find(x=>x.id===${p.id}), 'searchProductFound'); switchTab('search');">
+            <div><div class="search-item-name">${p.name}</div>
+            <div style="font-size:11px;color:var(--text-light);">Esp: ${p.expected} | $${p.pvp.toFixed(2)}${qty > 0 ? ` | Rec: ${qty}` : ''}</div></div>
+            <i class="fas fa-plus-circle search-item-add"></i></div>`;
+    }).join('');
+    if (filtered.length === 0) container.innerHTML = '<div class="empty-state"><p>No se encontraron productos</p></div>';
+}
+
+// ===================== RECEIVED LIST =====================
+async function renderList() {
+    const list = document.getElementById('receivedList');
+    const ids = Object.keys(receivedItems);
+    if (ids.length === 0) {
+        list.innerHTML = '<li class="empty-state"><i class="fas fa-inbox"></i><p>No hay productos registrados aun.</p></li>';
+        document.getElementById('exportSection').style.display = 'none';
+        return;
+    }
+    document.getElementById('exportSection').style.display = 'flex';
+    list.innerHTML = ids.map(id => {
+        const product = PRODUCTS.find(p => p.id === parseInt(id));
+        if (!product) return '';
+        const qty = receivedItems[id];
+        const diff = qty - product.expected;
+        const diffClass = diff < 0 ? 'color:var(--danger)' : diff > 0 ? 'color:var(--primary)' : '';
+        return `<li class="received-item flash">
+            <div class="received-item-info">
+                <div class="received-item-name">${product.name}</div>
+                <div class="received-item-qty">Recibido: <strong>${qty}</strong> / Esperado: ${product.expected}${diff !== 0 ? `<span style="font-weight:700;${diffClass}"> (${diff > 0 ? '+' : ''}${diff})</span>` : '<span style="color:var(--primary)"> (OK)</span>'}</div>
+                <div class="received-item-qty">Costo: $${product.cost.toFixed(2)} | PVP: $${product.pvp.toFixed(2)} | Subtotal: $${(qty * product.cost).toFixed(2)}</div>
+            </div>
+            <div class="received-item-actions">
+                <button class="icon-btn icon-btn-edit" onclick="openEditModal(${id})"><i class="fas fa-pen"></i></button>
+                <button class="icon-btn icon-btn-delete" onclick="removeItem(${id})"><i class="fas fa-trash"></i></button>
+            </div></li>`;
+    }).join('');
+}
+
+// ===================== EDIT MODAL =====================
+function openEditModal(productId) {
+    editIndex = productId;
+    const product = PRODUCTS.find(p => p.id === productId);
+    document.getElementById('editProductName').textContent = product.name + ' (Esperado: ' + product.expected + ')';
+    document.getElementById('editQtyInput').value = receivedItems[productId];
+    document.getElementById('editModal').classList.add('active');
+}
+function closeEditModal() { document.getElementById('editModal').classList.remove('active'); editIndex = null; }
+function editQty(delta) { const i = document.getElementById('editQtyInput'); i.value = Math.max(0, (parseInt(i.value) || 0) + delta); }
+
+async function saveEdit() {
+    const qty = parseInt(document.getElementById('editQtyInput').value) || 0;
+    if (qty <= 0) { delete receivedItems[editIndex]; await dbDelete('received', parseInt(editIndex)); }
+    else {
+        receivedItems[editIndex] = qty;
+        await dbPut('received', { productId: parseInt(editIndex), qty });
+        const today = new Date().toISOString().split('T')[0];
+        await dbPut('history', { date: today, productId: parseInt(editIndex), qty, timestamp: Date.now() });
+    }
+    closeEditModal(); renderList(); updateStats(); showToast("Cantidad actualizada");
+}
+
+async function removeItem(productId) {
+    const product = PRODUCTS.find(p => p.id === productId);
+    if (confirm(`Eliminar "${product.name}" de la lista?`)) {
+        delete receivedItems[productId];
+        await dbDelete('received', productId);
+        renderList(); updateStats(); updateBadge(); showToast("Producto eliminado");
+    }
+}
+
+async function clearAll() {
+    if (confirm("Limpiar toda la lista de recepcion?")) {
+        receivedItems = {};
+        await dbClear('received');
+        await dbClear('history');
+        calHistoryDates = {};
+        renderList(); renderSearchResults(''); updateStats(); updateBadge(); showToast("Lista limpiada");
+    }
+}
+
+// ===================== EXPORT CSV =====================
+function exportCSV() {
+    const ids = Object.keys(receivedItems);
+    if (ids.length === 0) { showToast("No hay datos para exportar"); return; }
+    const dateStr = new Date().toISOString().split('T')[0];
+    let csv = 'No.,Codigo,Producto,Costo,PVP,Esperado,Recibido,Diferencia,Subtotal Costo,Fecha\n';
+    let totalCost = 0, totalPvp = 0, totalRec = 0;
+    ids.forEach((id, index) => {
+        const p = PRODUCTS.find(x => x.id === parseInt(id));
+        if (p) {
+            const qty = receivedItems[id], diff = qty - p.expected, sub = qty * p.cost;
+            totalCost += sub; totalPvp += qty * p.pvp; totalRec += qty;
+            csv += `${index + 1},${p.barcode},"${p.name}",${p.cost.toFixed(2)},${p.pvp.toFixed(2)},${p.expected},${qty},${diff > 0 ? '+' : ''}${diff},${sub.toFixed(2)},${dateStr}\n`;
+        }
+    });
+    csv += `\n,,TOTALES,,,,,${totalRec},,${totalCost.toFixed(2)}\n`;
+    csv += `,,"Valor Venta Total",,,,,,${totalPvp.toFixed(2)}\n`;
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `recepcion_${dateStr}.csv`; a.click(); showToast("CSV descargado");
+}
+
+// ===================== REPORT =====================
+function renderReport() {
+    const container = document.getElementById('reportContent');
+    const ids = Object.keys(receivedItems);
+    if (ids.length === 0) { container.innerHTML = '<div class="card"><div class="empty-state"><i class="fas fa-chart-bar"></i><p>No hay datos para el reporte.</p></div></div>'; return; }
+
+    let totalExpected = 0, totalReceived = 0, totalMissing = 0, totalExcess = 0;
+    let countOk = 0, countMissing = 0, countExcess = 0, countNotScanned = 0;
+    const items = [];
+
+    PRODUCTS.forEach(p => {
+        const received = receivedItems[p.id] || 0;
+        const diff = received - p.expected;
+        totalExpected += p.expected;
+        totalReceived += received;
+        if (received === 0) { countNotScanned++; items.push({ ...p, received, diff, status: 'notscanned' }); }
+        else if (diff < 0) { countMissing++; totalMissing += Math.abs(diff); items.push({ ...p, received, diff, status: 'missing' }); }
+        else if (diff > 0) { countExcess++; totalExcess += diff; items.push({ ...p, received, diff, status: 'excess' }); }
+        else { countOk++; items.push({ ...p, received, diff, status: 'ok' }); }
+    });
+
+    const totalProducts = PRODUCTS.length;
+    const scannedCount = ids.length;
+    const fillPct = totalExpected > 0 ? Math.round((totalReceived / totalExpected) * 100) : 0;
+    const progressColor = pct => pct >= 100 ? 'green' : pct >= 70 ? 'orange' : 'red';
+
+    let html = `<div class="report-summary">
+        <div class="report-summary-item"><div class="report-summary-number" style="color:var(--danger)">${totalMissing}</div><div class="report-summary-label">Und. Faltantes</div></div>
+        <div class="report-summary-item"><div class="report-summary-number" style="color:#e67e22">${totalExcess}</div><div class="report-summary-label">Und. Sobrantes</div></div>
+        <div class="report-summary-item"><div class="report-summary-number" style="color:var(--primary)">${countOk}</div><div class="report-summary-label">Completos</div></div>
+        <div class="report-summary-item"><div class="report-summary-number" style="color:var(--text-light)">${countNotScanned}</div><div class="report-summary-label">Sin Escanear</div></div>
+        <div class="report-summary-item full"><div class="report-summary-label" style="margin-bottom:6px;">Progreso General</div>
+        <div class="report-progress-bar"><div class="report-progress-fill ${progressColor(fillPct)}" style="width:${fillPct}%"></div></div>
+        <div style="font-size:13px;margin-top:4px;font-weight:700;">${totalReceived} / ${totalExpected} unidades (${fillPct}%)</div></div></div>`;
+
+    const missingItems = items.filter(i => i.status === 'missing').sort((a, b) => a.diff - b.diff);
+    const excessItems = items.filter(i => i.status === 'excess').sort((a, b) => b.diff - a.diff);
+    const okItems = items.filter(i => i.status === 'ok');
+    const notScannedItems = items.filter(i => i.status === 'notscanned');
+
+    if (missingItems.length > 0) {
+        html += `<div class="card" style="border:2px solid var(--danger);"><div class="report-section-title missing-title"><i class="fas fa-exclamation-triangle"></i> FALTANTES (${missingItems.length} prod, ${totalMissing} und)</div>`;
+        missingItems.forEach(p => {
+            html += `<div class="report-row" style="background:#fff8f8;"><div class="report-row-info"><div class="report-row-name">${p.name}</div><div class="report-row-detail">Esp: ${p.expected} | Rec: ${p.received}</div></div>
+            <div class="report-row-nums"><div class="report-expected"><span>${p.expected}</span>Esp</div><i class="fas fa-arrow-right report-arrow"></i><div class="report-received"><span>${p.received}</span>Rec</div></div>
+            <div class="report-diff missing"><i class="fas fa-minus-circle" style="margin-right:4px;"></i>${p.diff}</div></div>`;
+        });
+        html += '</div>';
+    }
+
+    if (excessItems.length > 0) {
+        html += `<div class="card" style="border:2px solid #e67e22;"><div class="report-section-title excess-title"><i class="fas fa-plus-circle"></i> SOBRANTES (${excessItems.length} prod, ${totalExcess} und)</div>`;
+        excessItems.forEach(p => {
+            html += `<div class="report-row"><div class="report-row-info"><div class="report-row-name">${p.name}</div><div class="report-row-detail">Esp: ${p.expected} | Rec: ${p.received}</div></div>
+            <div class="report-row-nums"><div class="report-expected"><span>${p.expected}</span>Esp</div><i class="fas fa-arrow-right report-arrow"></i><div class="report-received"><span>${p.received}</span>Rec</div></div>
+            <div class="report-diff excess"><i class="fas fa-plus-circle" style="margin-right:4px;"></i>+${p.diff}</div></div>`;
+        });
+        html += '</div>';
+    }
+
+    if (okItems.length > 0) {
+        html += `<div class="card"><div class="report-section-title ok-title"><i class="fas fa-check-circle"></i> COMPLETOS (${okItems.length})</div>`;
+        okItems.forEach(p => {
+            html += `<div class="report-row"><div class="report-row-info"><div class="report-row-name">${p.name}</div><div class="report-row-detail">${p.expected} unidades</div></div>
+            <div class="report-row-nums"><div class="report-expected"><span>${p.expected}</span>Esp</div><i class="fas fa-arrow-right report-arrow"></i><div class="report-received"><span>${p.received}</span>Rec</div></div>
+            <div class="report-diff ok"><i class="fas fa-check" style="margin-right:4px;"></i>OK</div></div>`;
+        });
+        html += '</div>';
+    }
+
+    if (notScannedItems.length > 0) {
+        html += `<div class="card"><div class="report-section-title notscanned-title"><i class="fas fa-question-circle"></i> SIN ESCANEAR (${notScannedItems.length})</div>`;
+        notScannedItems.forEach(p => {
+            html += `<div class="report-row" style="opacity:.6;"><div class="report-row-info"><div class="report-row-name">${p.name}</div><div class="report-row-detail">Esp: ${p.expected} | Costo: $${p.cost.toFixed(2)}</div></div>
+            <div class="report-row-nums"><div class="report-expected"><span>${p.expected}</span>Esp</div></div>
+            <div class="report-diff" style="background:var(--border);color:var(--text-light);">--</div></div>`;
+        });
+        html += '</div>';
+    }
+
+    container.innerHTML = html;
+}
+
+// ===================== CALENDAR =====================
+async function loadHistoryDates() {
+    const all = await dbGetAll('history');
+    calHistoryDates = {};
+    all.forEach(h => {
+        if (!calHistoryDates[h.date]) calHistoryDates[h.date] = { count: 0, hasMissing: false };
+        calHistoryDates[h.date].count++;
+    });
+    // Check missing per day
+    for (const date of Object.keys(calHistoryDates)) {
+        const entries = all.filter(h => h.date === date);
+        for (const entry of entries) {
+            const product = PRODUCTS.find(p => p.id === entry.productId);
+            if (product && entry.qty < product.expected) {
+                calHistoryDates[date].hasMissing = true;
+                break;
+            }
+        }
+    }
+}
+
+function renderCalendar() {
+    const container = document.getElementById('calendarContent');
+    const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const dayNames = ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'];
+
+    loadHistoryDates().then(() => {
+        const firstDay = new Date(calYear, calMonth, 1);
+        const lastDay = new Date(calYear, calMonth + 1, 0);
+        const startDow = (firstDay.getDay() + 6) % 7;
+        const daysInMonth = lastDay.getDate();
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        let html = `
+            <div class="card">
+                <div class="cal-header">
+                    <button class="icon-btn icon-btn-edit" onclick="calPrev()"><i class="fas fa-chevron-left"></i></button>
+                    <h3>${months[calMonth]} ${calYear}</h3>
+                    <button class="icon-btn icon-btn-edit" onclick="calNext()"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="cal-grid">
+                    ${dayNames.map(d => `<div class="cal-day-name">${d}</div>`).join('')}`;
+
+        // Previous month padding
+        const prevLast = new Date(calYear, calMonth, 0).getDate();
+        for (let i = startDow - 1; i >= 0; i--) {
+            html += `<div class="cal-day other-month">${prevLast - i}</div>`;
+        }
+
+        // Current month days
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const isToday = dateStr === todayStr;
+            const isSelected = dateStr === calSelectedDate;
+            const dayData = calHistoryDates[dateStr];
+            const hasData = !!dayData;
+
+            let classes = 'cal-day';
+            if (isToday) classes += ' today';
+            if (isSelected) classes += ' selected';
+            if (hasData) classes += ' has-data';
+
+            html += `<div class="${classes}" onclick="selectCalDay('${dateStr}')">${d}`;
+            if (hasData) html += `<div class="cal-dot${dayData.hasMissing ? ' red' : ''}"></div>`;
+            html += `</div>`;
+        }
+
+        // Next month padding
+        const totalCells = startDow + daysInMonth;
+        const remaining = (7 - (totalCells % 7)) % 7;
+        for (let i = 1; i <= remaining; i++) {
+            html += `<div class="cal-day other-month">${i}</div>`;
+        }
+
+        html += `</div>
+            <div class="cal-legend">
+                <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--primary)"></div> Con recepcion</div>
+                <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--danger)"></div> Con faltantes</div>
+                <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--primary);width:12px;height:12px;border:2px solid var(--primary)"></div> Hoy</div>
+            </div>
+        </div>`;
+
+        html += `<div id="dayDetail"></div>`;
+        container.innerHTML = html;
+
+        if (calSelectedDate) showDayDetail(calSelectedDate);
+    });
+}
+
+function calPrev() {
+    calMonth--;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+}
+
+function calNext() {
+    calMonth++;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+}
+
+function selectCalDay(dateStr) {
+    calSelectedDate = dateStr;
+    renderCalendar();
+}
+
+async function showDayDetail(dateStr) {
+    const container = document.getElementById('dayDetail');
+    if (!container) return;
+
+    const entries = await dbGetByIndex('history', 'date', dateStr);
+
+    if (entries.length === 0) {
+        container.innerHTML = `<div class="card day-detail">
+            <div class="day-detail-header"><h3><i class="fas fa-calendar-day" style="color:var(--primary)"></i> ${formatDateES(dateStr)}</h3></div>
+            <div class="empty-state"><i class="fas fa-inbox"></i><p>No hay recepciones este dia.</p></div>
+        </div>`;
+        return;
+    }
+
+    // Aggregate by product (take latest qty per product)
+    const productMap = {};
+    entries.forEach(e => {
+        if (!productMap[e.productId] || e.timestamp > productMap[e.productId].timestamp) {
+            productMap[e.productId] = e;
+        }
+    });
+
+    const items = Object.values(productMap);
+    let totalQty = 0, totalCost = 0, totalExpected = 0;
+    const missingItems = [];
+    const okItems = [];
+
+    items.forEach(e => {
+        const product = PRODUCTS.find(p => p.id === e.productId);
+        if (!product) return;
+        totalQty += e.qty;
+        totalCost += e.qty * product.cost;
+        totalExpected += product.expected;
+        const diff = e.qty - product.expected;
+        if (diff < 0) missingItems.push({ ...product, qty: e.qty, diff });
+        else okItems.push({ ...product, qty: e.qty, diff });
+    });
+
+    const fillPct = totalExpected > 0 ? Math.round((totalQty / totalExpected) * 100) : 0;
+
+    let html = `<div class="card day-detail">
+        <div class="day-detail-header"><h3><i class="fas fa-calendar-day" style="color:var(--primary)"></i> ${formatDateES(dateStr)}</h3></div>
+        <div class="day-summary">
+            <div class="day-summary-chip"><i class="fas fa-box" style="color:var(--primary)"></i> ${items.length} productos</div>
+            <div class="day-summary-chip"><i class="fas fa-cubes" style="color:var(--primary)"></i> ${totalQty} unidades</div>
+            <div class="day-summary-chip"><i class="fas fa-dollar-sign" style="color:var(--accent)"></i> $${totalCost.toFixed(2)}</div>
+            <div class="day-summary-chip" style="color:${fillPct >= 100 ? 'var(--primary)' : 'var(--danger)'}"><i class="fas fa-percentage"></i> ${fillPct}%</div>
+        </div>`;
+
+    if (missingItems.length > 0) {
+        html += `<div style="margin:8px 0;"><div style="font-size:12px;font-weight:700;color:var(--danger);margin-bottom:6px;"><i class="fas fa-exclamation-triangle"></i> FALTANTES</div>`;
+        missingItems.sort((a, b) => a.diff - b.diff).forEach(p => {
+            html += `<div class="day-detail-item">
+                <div class="day-detail-qty negative">${p.qty}</div>
+                <div style="flex:1;"><div class="day-detail-name">${p.name}</div><div class="day-detail-sub">Esp: ${p.expected} | Falta: ${Math.abs(p.diff)}</div></div>
+                <div style="color:var(--danger);font-weight:800;font-size:13px;">${p.diff}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (okItems.length > 0) {
+        html += `<div style="margin:8px 0;"><div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:6px;"><i class="fas fa-check-circle"></i> COMPLETOS</div>`;
+        okItems.forEach(p => {
+            html += `<div class="day-detail-item">
+                <div class="day-detail-qty">${p.qty}</div>
+                <div style="flex:1;"><div class="day-detail-name">${p.name}</div><div class="day-detail-sub">Esp: ${p.expected} | $${(p.qty * p.cost).toFixed(2)}</div></div>
+                <div style="color:var(--primary);font-weight:800;font-size:13px;">${p.diff > 0 ? '+' + p.diff : 'OK'}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+function formatDateES(dateStr) {
+    const [y, m, d] = dateStr.split('-');
+    const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const dt = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+    const dayNames = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+    return `${dayNames[dt.getDay()]} ${parseInt(d)} de ${months[parseInt(m) - 1]} ${y}`;
+}
+
+// ===================== PRODUCT MANAGEMENT =====================
+function renderProductList() {
+    const container = document.getElementById('productList');
+    const query = (document.getElementById('productSearchInput')?.value || '').toLowerCase();
+    const filtered = query ? PRODUCTS.filter(p => p.name.toLowerCase().includes(query) || (p.barcode || '').includes(query)) : PRODUCTS;
+
+    document.getElementById('productCount').textContent = PRODUCTS.length;
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No se encontraron productos</p></div>';
+        return;
+    }
+
+    container.innerHTML = filtered.map(p => `
+        <div class="product-row">
+            <div class="product-row-info">
+                <div class="product-row-name">${p.name}</div>
+                <div class="product-row-detail">${p.barcode || 'Sin codigo'} | Costo: $${p.cost.toFixed(2)} | PVP: $${p.pvp.toFixed(2)} | Esp: ${p.expected}</div>
+            </div>
+            <div class="product-row-actions">
+                <button class="icon-btn icon-btn-edit" onclick="openProductEditModal(${p.id})"><i class="fas fa-pen"></i></button>
+                <button class="icon-btn icon-btn-delete" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openProductEditModal(productId) {
+    editingProductId = productId;
+    const p = PRODUCTS.find(x => x.id === productId);
+    document.getElementById('productEditTitle').textContent = productId ? 'Editar Producto' : 'Nuevo Producto';
+    document.getElementById('peName').value = p ? p.name : '';
+    document.getElementById('peBarcode').value = p ? (p.barcode || '') : '';
+    document.getElementById('peCost').value = p ? p.cost : '';
+    document.getElementById('pePvp').value = p ? p.pvp : '';
+    document.getElementById('peExpected').value = p ? p.expected : '';
+    document.getElementById('productEditModal').classList.add('active');
+}
+
+function closeProductEditModal() {
+    document.getElementById('productEditModal').classList.remove('active');
+    editingProductId = null;
+}
+
+async function saveProductEdit() {
+    const name = document.getElementById('peName').value.trim();
+    if (!name) { showToast("El nombre es obligatorio"); return; }
+
+    const data = {
+        name: name,
+        barcode: document.getElementById('peBarcode').value.trim(),
+        cost: parseFloat(document.getElementById('peCost').value) || 0,
+        pvp: parseFloat(document.getElementById('pePvp').value) || 0,
+        expected: parseInt(document.getElementById('peExpected').value) || 0
+    };
+
+    if (editingProductId) {
+        data.id = editingProductId;
+    }
+
+    const savedId = await dbPut('products', data);
+
+    // Update barcode map
+    if (data.barcode) {
+        barcodeMap[data.barcode] = savedId;
+        await dbPut('barcodeMap', { barcode: data.barcode, productId: savedId });
+    }
+
+    PRODUCTS = await dbGetAll('products');
+    closeProductEditModal();
+    renderProductList();
+    renderSearchResults(document.getElementById('searchInput')?.value || '');
+    showToast(editingProductId ? "Producto actualizado" : "Producto creado");
+}
+
+async function deleteProduct(productId) {
+    const p = PRODUCTS.find(x => x.id === productId);
+    if (!confirm(`Eliminar "${p.name}" permanentemente?`)) return;
+    await dbDelete('products', productId);
+    if (receivedItems[productId]) { delete receivedItems[productId]; await dbDelete('received', productId); }
+    // Remove from barcode map
+    const mapEntries = await dbGetAll('barcodeMap');
+    for (const entry of mapEntries) {
+        if (entry.productId === productId) await dbDelete('barcodeMap', entry.barcode);
+    }
+    PRODUCTS = await dbGetAll('products');
+    Object.keys(barcodeMap).forEach(k => { if (barcodeMap[k] === productId) delete barcodeMap[k]; });
+    renderProductList(); renderSearchResults(''); updateStats(); updateBadge();
+    showToast("Producto eliminado");
+}
+
+function resetToDefault() {
+    if (!confirm("Esto eliminara todos los productos actuales y cargara los defaults. Continuar?")) return;
+    if (!confirm("SEGURO? Se perderan todos los datos de productos.")) return;
+    (async () => {
+        await dbClear('products');
+        await dbClear('barcodeMap');
+        await dbClear('received');
+        receivedItems = {};
+        await seedDefaultProducts();
+        PRODUCTS = await dbGetAll('products');
+        const mapItems = [];
+        PRODUCTS.forEach(p => { if (p.barcode) { barcodeMap[p.barcode] = p.id; mapItems.push({ barcode: p.barcode, productId: p.id }); } });
+        await dbPutAll('barcodeMap', mapItems);
+        renderProductList(); renderSearchResults(''); renderList(); updateStats(); updateBadge();
+        showToast("Productos restaurados al default");
+    })();
+}
+
+async function exportProducts() {
+    const data = PRODUCTS.map(p => ({
+        'Codigo': p.barcode || '',
+        'Descripcion': p.name,
+        'Costo': p.cost,
+        'PVP': p.pvp,
+        'Esperado': p.expected
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+    XLSX.writeFile(wb, 'productos_inventario.xlsx');
+    showToast("Excel de productos descargado");
+}
+
+// ===================== EXCEL IMPORT =====================
+const fileDrop = document.getElementById('fileDrop');
+fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('dragover'); });
+fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('dragover'));
+fileDrop.addEventListener('drop', e => { e.preventDefault(); fileDrop.classList.remove('dragover'); handleFileImport({ target: { files: e.dataTransfer.files } }); });
+
+function handleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const wb = XLSX.read(e.target.result, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+            if (data.length === 0) { showToast("El archivo esta vacio"); return; }
+
+            // Auto-detect columns
+            const headers = Object.keys(data[0]);
+            const findCol = patterns => {
+                for (const h of headers) {
+                    const hl = h.toLowerCase().trim();
+                    for (const p of patterns) { if (hl.includes(p)) return h; }
+                }
+                return null;
+            };
+
+            const colBarcode = findCol(['codigo', 'code', 'barcode', 'upc', 'sku']);
+            const colName = findCol(['descripcion', 'nombre', 'producto', 'description', 'name', 'product']);
+            const colCost = findCol(['costo', 'cost', 'precio compra']);
+            const colPvp = findCol(['pvp', 'precio venta', 'retail', 'price']);
+            const colExpected = findCol(['cant', 'cantidad', 'quantity', 'expected', 'pedido', 'orden']);
+
+            const mappedProducts = data.map((row, i) => {
+                const barcode = colBarcode ? String(row[colBarcode] || '').trim() : '';
+                const name = colName ? String(row[colName] || '').trim() : '';
+                const cost = colCost ? parseFloat(row[colCost]) || 0 : 0;
+                const pvp = colPvp ? parseFloat(row[colPvp]) || 0 : 0;
+                const expected = colExpected ? parseInt(row[colExpected]) || 0 : 0;
+                return { barcode, name, cost, pvp, expected, _row: i + 2 };
+            }).filter(p => p.name);
+
+            if (mappedProducts.length === 0) { showToast("No se pudieron leer productos del archivo"); return; }
+
+            pendingImport = mappedProducts;
+            document.getElementById('importCount').textContent = `${mappedProducts.length} productos encontrados`;
+            document.getElementById('importPreviewList').innerHTML = mappedProducts.slice(0, 50).map(p =>
+                `<div class="preview-row"><span style="font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span><span style="color:var(--text-light);flex-shrink:0;margin-left:8px;">${p.barcode || '-'} | $${p.cost.toFixed(2)} | Esp: ${p.expected}</span></div>`
+            ).join('') + (mappedProducts.length > 50 ? `<div class="preview-row" style="justify-content:center;color:var(--text-light);">... y ${mappedProducts.length - 50} mas</div>` : '');
+
+            document.getElementById('importPreview').classList.remove('hidden');
+            showToast(`${mappedProducts.length} productos listos para importar`);
+        } catch (err) {
+            console.error(err);
+            showToast("Error al leer el archivo");
+        }
+    };
+    reader.readAsArrayBuffer(file);
+    event.target.value = '';
+}
+
+async function confirmImport() {
+    if (!pendingImport) return;
+
+    const replace = confirm("Deseas REEMPLAZAR los productos actuales?\n\nAceptar = Reemplazar todo\nCancelar = Agregar a los existentes");
+
+    if (replace) {
+        await dbClear('products');
+        await dbClear('barcodeMap');
+        await dbClear('received');
+        receivedItems = {};
+        barcodeMap = {};
+    }
+
+    const items = pendingImport.map(p => ({
+        barcode: p.barcode,
+        name: p.name,
+        cost: p.cost,
+        pvp: p.pvp,
+        expected: p.expected
+    }));
+
+    await dbPutAll('products', items);
+    PRODUCTS = await dbGetAll('products');
+
+    // Rebuild barcode map
+    const mapItems = [];
+    PRODUCTS.forEach(p => {
+        if (p.barcode) {
+            barcodeMap[p.barcode] = p.id;
+            mapItems.push({ barcode: p.barcode, productId: p.id });
+        }
+    });
+    await dbClear('barcodeMap');
+    await dbPutAll('barcodeMap', mapItems);
+
+    pendingImport = null;
+    document.getElementById('importPreview').classList.add('hidden');
+    renderProductList(); renderSearchResults(''); renderList(); updateStats(); updateBadge();
+    showToast(`${PRODUCTS.length} productos cargados`);
+}
+
+function cancelImport() {
+    pendingImport = null;
+    document.getElementById('importPreview').classList.add('hidden');
+}
+
+// ===================== HELPERS =====================
+function updateStats() {
+    const ids = Object.keys(receivedItems);
+    document.getElementById('totalItems').textContent = ids.length;
+    document.getElementById('totalQty').textContent = ids.reduce((s, id) => s + (receivedItems[id] || 0), 0);
+}
+
+function updateBadge() {
+    const count = Object.keys(receivedItems).length;
+    const badge = document.getElementById('listBadge');
+    if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
+    else badge.classList.add('hidden');
+}
+
+function showToast(message) {
+    const t = document.getElementById('toast');
+    t.textContent = message; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===================== START =====================
+init();
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</body>
+</html>
